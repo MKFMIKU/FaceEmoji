@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout
+<android.widget.RelativeLayout
     xmlns:opencv="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
@@ -7,11 +7,25 @@
     android:layout_height="match_parent"
     tools:context="sj0202.s2.studyjams.cn.faceemoji.MainActivity">
 
+
     <org.opencv.android.JavaCameraView
         android:id="@+id/cameraView"
         opencv:show_fps="true"
         opencv:camera_id="any"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        tools:layout_editor_absoluteY="8dp"
+        tools:layout_editor_absoluteX="8dp" />
 
-</android.support.constraint.ConstraintLayout>
+    <ImageButton
+        android:id="@+id/rotate_button"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="36dp"
+        android:backgroundTint="#00ffffff"
+        android:scaleType="fitCenter"
+        android:src="@drawable/rotate" />
+
+</android.widget.RelativeLayout>
