@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">FaceEmoji</string>
+    <string name="invitation_message" >快来使用FaceEmoji 可以直接拍出Emoji的你哦！</string>
+    <string name="invitation_title" >FaceEmoji</string>
 </resources>

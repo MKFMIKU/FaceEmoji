@@ -2,10 +2,13 @@ package sj0202.s2.studyjams.cn.faceemoji;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -17,6 +20,9 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.Toast;
+
+import com.google.android.gms.appinvite.AppInviteInvitation;
+import com.google.firebase.analytics.FirebaseAnalytics;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -38,6 +44,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2{
     private static final int MY_PERMISSIONS_REQUEST_CAMERA = 0;
@@ -49,7 +57,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private Mat mEmojiMask;
     private Mat mEmojiRgbaScale;
     private Mat mEmojiMaskScale;
+    private Mat rgbaFace;
     private static final String TAG = "FaceCV::Main";
+    private int REQUEST_INVITE = 0;
+    private FirebaseAnalytics mFirebaseAnalytics;
+    private String filename;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -92,7 +104,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
 
-        ActivityCompat.requestPermissions(MainActivity.this,new String[]{Manifest.permission.CAMERA},1);
+        mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
+
+        ActivityCompat.requestPermissions(MainActivity.this,
+                new String[]{Manifest.permission.CAMERA,Manifest.permission.WRITE_EXTERNAL_STORAGE},1);
 
         cameraBridgeViewBase = (CameraBridgeViewBase) findViewById(R.id.cameraView);
         cameraBridgeViewBase.setVisibility(SurfaceView.VISIBLE);
@@ -100,6 +115,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         cameraBridgeViewBase.setCvCameraViewListener(this);
 
         ImageButton rotateButton = (ImageButton) findViewById(R.id.rotate_button);
+        ImageButton captureButton = (ImageButton) findViewById(R.id.capture_button);
+        ImageButton shareButton = (ImageButton) findViewById(R.id.share_button);
+
         rotateButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -109,6 +127,55 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 else CAMERA_ID=CameraBridgeViewBase.CAMERA_ID_BACK;
                 cameraBridgeViewBase.setCameraIndex(CAMERA_ID);
                 cameraBridgeViewBase.enableView();
+            }
+        });
+
+        captureButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Bitmap bmp = null;
+                bmp = Bitmap.createBitmap(rgbaFace.cols(), rgbaFace.rows(), Bitmap.Config.ARGB_8888);
+                Utils.matToBitmap(rgbaFace, bmp);
+                FileOutputStream out = null;
+                filename ="IMG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".png";
+                File sd = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                        + "/FaceEmoji");
+                boolean success = true;
+                if (!sd.exists()) {
+                    success = sd.mkdir();
+                }
+                if (success) {
+                    File dest = new File(sd, filename);
+                    try {
+                        out = new FileOutputStream(dest);
+                        bmp.compress(Bitmap.CompressFormat.PNG, 100, out);
+                        out.close();
+                        Toast.makeText(getApplicationContext(),"保存成功",Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Log.d(TAG, e.getMessage());
+                    }
+                }else{
+                    Log.e(TAG,"FILE NOT OK");
+                }
+            }
+        });
+
+        shareButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                if(filename==null){
+                    Toast.makeText(getApplicationContext(),"先拍摄图片",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                        + "/FaceEmoji"+filename);
+                intent.setType("image/png");
+                Uri uri = Uri.fromFile(file);
+                intent.putExtra(Intent.EXTRA_STREAM, uri);
+                intent.putExtra(Intent.EXTRA_TEXT, "来自FaceEmoji");
+                startActivity(Intent.createChooser(intent, "FaceEmoji"));
             }
         });
     }
@@ -175,7 +242,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         Mat grayFace = inputFrame.gray();
-        Mat rgbaFace = inputFrame.rgba();
+        rgbaFace = inputFrame.rgba();
         MatOfRect faces = new MatOfRect();
 
         mEmojiRgbaScale = new Mat();
@@ -198,6 +265,24 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             }
         }
         return rgbaFace;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Log.d(TAG, "onActivityResult: requestCode=" + requestCode + ", resultCode=" + resultCode);
+
+        if (requestCode == REQUEST_INVITE) {
+            if (resultCode == RESULT_OK) {
+                Toast.makeText(getApplicationContext(),"分享成功",Toast.LENGTH_SHORT);
+                String[] ids = AppInviteInvitation.getInvitationIds(resultCode, data);
+                for (String id : ids) {
+                    Log.d(TAG, "onActivityResult: sent invitation " + id);
+                }
+            } else {
+                Toast.makeText(getApplicationContext(),"分享失败",Toast.LENGTH_SHORT);
+            }
+        }
     }
 }
 
