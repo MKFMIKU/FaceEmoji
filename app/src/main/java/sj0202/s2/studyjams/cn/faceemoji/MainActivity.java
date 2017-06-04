@@ -62,6 +62,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private int REQUEST_INVITE = 0;
     private FirebaseAnalytics mFirebaseAnalytics;
     private String filename;
+    private Bitmap bmp;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -133,9 +134,6 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         captureButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Bitmap bmp = null;
-                bmp = Bitmap.createBitmap(rgbaFace.cols(), rgbaFace.rows(), Bitmap.Config.ARGB_8888);
-                Utils.matToBitmap(rgbaFace, bmp);
                 FileOutputStream out = null;
                 filename ="IMG_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".png";
                 File sd = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
@@ -170,11 +168,12 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                     return;
                 }
                 File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                        + "/FaceEmoji"+filename);
-                intent.setType("image/png");
+                        + "/FaceEmoji/"+filename);
+                intent.setType("image/*");
                 Uri uri = Uri.fromFile(file);
                 intent.putExtra(Intent.EXTRA_STREAM, uri);
                 intent.putExtra(Intent.EXTRA_TEXT, "来自FaceEmoji");
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(Intent.createChooser(intent, "FaceEmoji"));
             }
         });
@@ -264,6 +263,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 mEmojiRgbaScale.copyTo(imageRoi,mEmojiMaskScale);
             }
         }
+        bmp = Bitmap.createBitmap(rgbaFace.cols(), rgbaFace.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(rgbaFace, bmp);
         return rgbaFace;
     }
 
