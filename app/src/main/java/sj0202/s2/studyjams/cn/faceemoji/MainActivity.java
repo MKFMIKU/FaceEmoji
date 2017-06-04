@@ -47,6 +47,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private int absoluteFaceSize;
     private Mat mEmojiRgba;
     private Mat mEmojiMask;
+    private Mat mEmojiRgbaScale;
+    private Mat mEmojiMaskScale;
     private static final String TAG = "FaceCV::Main";
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -85,7 +87,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getSupportActionBar().hide();
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_main);
 
         ActivityCompat.requestPermissions(MainActivity.this,new String[]{Manifest.permission.CAMERA},1);
@@ -164,6 +168,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
     @Override
     public void onCameraViewStopped() {
+        mEmojiRgba.release();
+        mEmojiMask.release();
     }
 
     @Override
@@ -171,6 +177,9 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         Mat grayFace = inputFrame.gray();
         Mat rgbaFace = inputFrame.rgba();
         MatOfRect faces = new MatOfRect();
+
+        mEmojiRgbaScale = new Mat();
+        mEmojiMaskScale = new Mat();
 
         if(cascadeClassifier!=null){
             cascadeClassifier.detectMultiScale(grayFace,faces,1.1,2,2,
@@ -181,12 +190,11 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         for(int i=0;i<faceArray.length;i++){
             if(faceArray[i].x+mEmojiRgba.width()<rgbaFace.width() &&
                     faceArray[i].y+mEmojiRgba.height()<rgbaFace.height()){
-                Imgproc.resize(mEmojiRgba,mEmojiRgba,faceArray[i].size());
-                Imgproc.resize(mEmojiMask,mEmojiMask,faceArray[i].size());
+                Imgproc.resize(mEmojiRgba,mEmojiRgbaScale,faceArray[i].size());
+                Imgproc.resize(mEmojiMask,mEmojiMaskScale,faceArray[i].size());
                 Mat imageRoi = rgbaFace.submat(new Rect(faceArray[i].x,faceArray[i].y,
-                        mEmojiRgba.width(),mEmojiRgba.height()));
-                mEmojiRgba.copyTo(imageRoi,mEmojiMask);
-                Log.e(TAG,String.valueOf(faceArray[i].width));
+                        mEmojiRgbaScale.width(),mEmojiRgbaScale.height()));
+                mEmojiRgbaScale.copyTo(imageRoi,mEmojiMaskScale);
             }
         }
         return rgbaFace;
